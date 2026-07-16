@@ -56,9 +56,14 @@ at its boundary.
 on it rather than an HTTP client or Open-Meteo. A later data-layer implementation
 will fulfil the contract and translate API responses into domain entities.
 
-## Step 5 notes (in progress)
+## Step 5 notes
 
 `WeatherPage` is the entry screen for the weather feature. It owns page-level
 layout such as the app bar and safe screen area. The first presentation change
 uses static display data deliberately, so layout and component design can be
 understood before asynchronous state is introduced.
+
+`CurrentWeatherCard` is a reusable, presentation-only component. Its required
+constructor values make its inputs explicit and prevent it from fetching data
+or owning business state. This makes the card easy to reuse with a loading,
+error, or live-weather state in the next step, and easy to test in isolation.
