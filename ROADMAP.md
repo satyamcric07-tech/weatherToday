@@ -67,3 +67,37 @@ understood before asynchronous state is introduced.
 constructor values make its inputs explicit and prevent it from fetching data
 or owning business state. This makes the card easy to reuse with a loading,
 error, or live-weather state in the next step, and easy to test in isolation.
+
+## Step 6 notes
+`WeatherPage` is a `ConsumerWidget` that watches `currentWeatherProvider` and
+renders loading, data, and error states. 
+
+Formatting `Weather` into display
+strings (temperature, condition label, feels-like, wind) lives in a private
+`_WeatherContent` widget in `weather_page.dart`, kept separate from the
+domain entity and from `CurrentWeatherCard`.
+
+Retry on error calls `ref.invalidate(currentWeatherProvider)`, which re-runsthe controller's `build()` and reloads the default city (Bengaluru).
+
+## Step 7 notes
+`WeatherPage` is a `ConsumerStatefulWidget`. It owns a `TextEditingController`
+for a city-search `TextField` (search action on the keyboard, disposed in
+`dispose()`).
+
+Submitting a non-empty, trimmed city name calls
+`ref.read(currentWeatherProvider.notifier).loadWeather(cityName)`, which sets
+`AsyncLoading()` and then uses `AsyncValue guard` to fetch and update state.
+
+All failures (bad city name, network error, etc.) currently collapse into
+one generic `AsyncError`, rendered by the existing `_WeatherError` widget.
+Distinguishing failure types is the next milestone, not yet implemented.
+
+
+`_WeatherError` distinguishes `WeatherLocationNotFoundException` (shows the
+  searched city name in the message) from all other failures (generic
+  network/parsing message). This is presentation importing a concrete
+  data-layer exception type directly — a deliberate, narrow exception to the
+  `presentation -> domain <- data` rule, since Dart exceptions propagate
+  untyped through `AsyncValue.guard`. If more failure types accumulate,
+  consider a domain-level `WeatherFailure` sealed type that the repository
+  maps into, so presentation matches on a domain type instead.

@@ -4,12 +4,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/weather.dart';
 import '../controller/current_weather_controller.dart';
 import '../widgets/current_weather_card.dart';
+import '../../data/exceptions/weather_exceptions.dart';
 
-class WeatherPage extends ConsumerWidget {
+class WeatherPage extends ConsumerStatefulWidget {
   const WeatherPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WeatherPage> createState() => _WeatherPageState();
+}
+
+class _WeatherPageState extends ConsumerState<WeatherPage> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _handleSearchSubmitted(String value) {
+    final cityName = value.trim();
+    if (cityName.isEmpty) return;
+
+    ref.read(currentWeatherProvider.notifier).loadWeather(cityName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final weatherAsync = ref.watch(currentWeatherProvider);
 
     return Scaffold(
@@ -17,12 +38,32 @@ class WeatherPage extends ConsumerWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: weatherAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) => _WeatherError(
-              onRetry: () => ref.invalidate(currentWeatherProvider),
-            ),
-            data: (weather) => _WeatherContent(weather: weather),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  hintText: 'Search for a city',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: _handleSearchSubmitted,
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: weatherAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) => _WeatherError(
+                    error: error,
+                    onRetry: () => ref.invalidate(currentWeatherProvider),
+                  ),
+                  data: (weather) => _WeatherContent(weather: weather),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -86,8 +127,9 @@ class _WeatherContent extends StatelessWidget {
 }
 
 class _WeatherError extends StatelessWidget {
-  const _WeatherError({required this.onRetry});
+  const _WeatherError({required this.error, required this.onRetry});
 
+  final Object error;
   final VoidCallback onRetry;
 
   @override
@@ -97,13 +139,21 @@ class _WeatherError extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Could not load the weather.',
+            _messageFor(error),
             style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           FilledButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );
+  }
+
+  String _messageFor(Object error) {
+    if (error is WeatherLocationNotFoundException) {
+      return "We couldn't find \"${error.cityName}\". Check the spelling and try again.";
+    }
+    return 'Could not load the weather. Please try again.';
   }
 }
