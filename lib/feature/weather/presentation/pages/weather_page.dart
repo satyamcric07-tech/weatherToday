@@ -1,39 +1,108 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/weather.dart';
+import '../controller/current_weather_controller.dart';
 import '../widgets/current_weather_card.dart';
 
-class WeatherPage extends StatelessWidget {
+class WeatherPage extends ConsumerWidget {
   const WeatherPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherAsync = ref.watch(currentWeatherProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('SkyBrief')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bengaluru',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Your weather, at a glance.',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 24),
-              const CurrentWeatherCard(
-                temperature: '24°',
-                condition: 'Partly cloudy',
-                feelsLike: 'Feels like 25°',
-                windSpeed: 'Wind 11 km/h',
-              ),
-            ],
+          child: weatherAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => _WeatherError(
+              onRetry: () => ref.invalidate(currentWeatherProvider),
+            ),
+            data: (weather) => _WeatherContent(weather: weather),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WeatherContent extends StatelessWidget {
+  const _WeatherContent({required this.weather});
+
+  final Weather weather;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          weather.cityName,
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your weather, at a glance.',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        const SizedBox(height: 24),
+        CurrentWeatherCard(
+          temperature: '${weather.temperatureCelsius.round()}°',
+          condition: _conditionLabel(weather.condition),
+          feelsLike:
+              'Feels like ${weather.apparentTemperatureCelsius.round()}°',
+          windSpeed: 'Wind ${weather.windSpeedKph.round()} km/h',
+        ),
+      ],
+    );
+  }
+
+  String _conditionLabel(WeatherCondition condition) {
+    switch (condition) {
+      case WeatherCondition.clear:
+        return 'Clear';
+      case WeatherCondition.partlyCloudy:
+        return 'Partly cloudy';
+      case WeatherCondition.cloudy:
+        return 'Cloudy';
+      case WeatherCondition.foggy:
+        return 'Foggy';
+      case WeatherCondition.drizzle:
+        return 'Drizzle';
+      case WeatherCondition.rainy:
+        return 'Rainy';
+      case WeatherCondition.snowy:
+        return 'Snowy';
+      case WeatherCondition.thunderstorm:
+        return 'Thunderstorm';
+      case WeatherCondition.unknown:
+        return 'Unknown';
+    }
+  }
+}
+
+class _WeatherError extends StatelessWidget {
+  const _WeatherError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Could not load the weather.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
       ),
     );
   }

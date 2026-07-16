@@ -1,4 +1,4 @@
-import 'package:weather_today/feature/weather/data/dataSources/open_meteo_remote_data_source.dart';
+import 'package:weather_today/feature/weather/data/datasources/open_meteo_remote_data_source.dart';
 import 'package:weather_today/feature/weather/data/exceptions/weather_exceptions.dart';
 
 import '../../domain/entities/weather.dart';
